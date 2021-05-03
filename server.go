@@ -96,6 +96,7 @@ func (s *Server) Handler(accept net.Conn) {
 	go func() {
 		buf := make([]byte, 4096)
 		for {
+			//var buf [128]byte
 			read, err := accept.Read(buf)
 			if read == 0 {
 				user.OffLine()
@@ -106,6 +107,7 @@ func (s *Server) Handler(accept net.Conn) {
 				fmt.Println("conn read err", err)
 				return
 			}
+			//decodeRune, _ := utf8.DecodeRune(buf[:read-1])
 
 			msg := string(buf[:read-1])
 
