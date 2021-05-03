@@ -58,6 +58,24 @@ func (user *User) ListenMessage() {
 	}
 }
 
+// DoMessage 用户处理消息的业务
 func (user *User) DoMessage(msg string) {
-	user.server.BroadCast(user, msg)
+	if msg == "who" {
+		user.server.mapLock.Lock()
+		for _, u := range user.server.OnlineMap {
+			onlineMsg := "[" + u.Addr + "]" + u.Name + ":" + "在线！\n"
+			user.SendMsg(onlineMsg)
+		}
+		user.server.mapLock.Unlock()
+	} else {
+		user.server.BroadCast(user, msg)
+	}
+}
+
+// SendMsg 给当前用户的客户端发送信息
+func (user *User) SendMsg(msg string) {
+	_, err := user.conn.Write([]byte(msg))
+	if err != nil {
+		return
+	}
 }
