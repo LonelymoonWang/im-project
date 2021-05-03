@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"sync"
 )
@@ -44,6 +45,7 @@ func (s *Server) Start() {
 		err := listen.Close()
 		if err != nil {
 			fmt.Println("net listen close err:", err)
+			return
 		}
 	}(listen)
 
@@ -86,14 +88,31 @@ func (s *Server) BroadCast(user *User, message string) {
 func (s *Server) Handler(accept net.Conn) {
 	//fmt.Println("服务端连接成功！")
 
-	user := NewUser(accept)
+	user := NewUser(accept, s)
 
-	s.mapLock.Lock()
-	s.OnlineMap[user.Name] = user
-	s.mapLock.Unlock()
+	// 用户上线
+	user.OnLine()
 
-	// 用户上线广播
-	s.BroadCast(user, "已上线!")
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			read, err := accept.Read(buf)
+			if read == 0 {
+				user.OffLine()
+				return
+			}
+
+			if err != nil && err != io.EOF {
+				fmt.Println("conn read err", err)
+				return
+			}
+
+			msg := string(buf[:read-1])
+
+			user.DoMessage(msg)
+
+		}
+	}()
 
 	// 当前handle阻塞
 	select {}

@@ -7,21 +7,44 @@ type User struct {
 	Addr string
 	c    chan string
 	conn net.Conn
+
+	server *Server
 }
 
-func NewUser(conn net.Conn) *User {
+func NewUser(conn net.Conn, server *Server) *User {
 	userAddr := conn.RemoteAddr().String()
 	user := &User{
-		Name: userAddr,
-		Addr: userAddr,
-		c:    make(chan string),
-		conn: conn,
+		Name:   userAddr,
+		Addr:   userAddr,
+		c:      make(chan string),
+		conn:   conn,
+		server: server,
 	}
 
 	// 启动接收message的go routine
 	go user.ListenMessage()
 
 	return user
+}
+
+// OnLine 用户一上线就把用户信息存进server里的上线用户map中，并且广播已上线信息
+func (user *User) OnLine() {
+
+	user.server.mapLock.Lock()
+	user.server.OnlineMap[user.Name] = user
+	user.server.mapLock.Unlock()
+
+	user.server.BroadCast(user, "已上线！")
+
+}
+
+// OffLine 下线功能，用户一退出系统，就更新用户该server中的在线用户列表
+func (user *User) OffLine() {
+	user.server.mapLock.Lock()
+	delete(user.server.OnlineMap, user.Name)
+	user.server.mapLock.Unlock()
+
+	user.server.BroadCast(user, "已下线！")
 }
 
 // ListenMessage 接收消息
@@ -33,4 +56,8 @@ func (user *User) ListenMessage() {
 			return
 		}
 	}
+}
+
+func (user *User) DoMessage(msg string) {
+	user.server.BroadCast(user, msg)
 }
