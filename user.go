@@ -37,7 +37,7 @@ func (user *User) OnLine() {
 	user.server.OnlineMap[user.Name] = user
 	user.server.mapLock.Unlock()
 
-	user.server.BroadCast(user, "已上线！")
+	user.server.BroadCast(user, "Online!")
 
 }
 
@@ -47,7 +47,7 @@ func (user *User) OffLine() {
 	delete(user.server.OnlineMap, user.Name)
 	user.server.mapLock.Unlock()
 
-	user.server.BroadCast(user, "已下线！")
+	user.server.BroadCast(user, "OffLine!")
 }
 
 // ListenMessage 接收消息
@@ -66,7 +66,7 @@ func (user *User) DoMessage(msg string) {
 	if msg == "who" {
 		user.server.mapLock.Lock()
 		for _, u := range user.server.OnlineMap {
-			onlineMsg := "[" + u.Addr + "]" + u.Name + ":" + "在线！\n"
+			onlineMsg := "[" + u.Addr + "]" + u.Name + ":" + "is Online!\n"
 			user.SendMsg(onlineMsg)
 		}
 		user.server.mapLock.Unlock()
@@ -76,7 +76,7 @@ func (user *User) DoMessage(msg string) {
 		//判断该用户名是否存在
 		_, ok := user.server.OnlineMap[newName]
 		if ok {
-			user.SendMsg("当前用户名称已存在！")
+			user.SendMsg("The current user name already exists!\n")
 		} else {
 
 			user.server.mapLock.Lock()
@@ -85,8 +85,29 @@ func (user *User) DoMessage(msg string) {
 			user.server.OnlineMap[newName] = user
 			user.server.mapLock.Unlock()
 
-			user.SendMsg("成功修改用户名！" + user.Name + "\n")
+			user.SendMsg("User name modified successfully!" + user.Name + "\n")
 		}
+	} else if len(msg) > 4 && msg[:3] == "to|" {
+		// 消息格式是“to|张思|消息内容”
+		//1.先获取用户名
+		remoteName := strings.Split(msg, "|")[1]
+		if remoteName == "" {
+			user.SendMsg("The message format is incorrect,please use \"to|username|msg\"format\n")
+			return
+		}
+		//2.根据用户名获取用户对象
+		remoteUser, ok := user.server.OnlineMap[remoteName]
+		if !ok {
+			user.SendMsg("this user is not exists!\n")
+			return
+		}
+		//3.获取消息内容，通过对方的User对象将消息内容发送出去
+		content := strings.Split(msg, "|")[2]
+		if content == "" {
+			user.SendMsg("no content!\n")
+			return
+		}
+		remoteUser.SendMsg(user.Name + "said to you:" + content + "\n")
 	} else {
 		user.server.BroadCast(user, msg)
 	}
